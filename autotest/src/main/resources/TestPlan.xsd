@@ -1,0 +1,1026 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified"
+           attributeFormDefault="unqualified">
+    <!--
+    1.同一测试用例同一设备同一协议第一次必须提供参数的值，后续可省略以使用之前的值
+    2.有些参数会有严格的限制，大部分参数不设限制，以测试参数出错的情况
+    3.由于是一问一答，client发送的命令默认会等待收到回复后再处理下一个动作，在某些并发场景，需要设no_wait为True。
+     -->
+    <xs:element name="TestPlan">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="InitDB" minOccurs="1" maxOccurs="1"/>               <!-- 自动初始化数据库 -->
+                <xs:element ref="ConfigDB" minOccurs="1" maxOccurs="1"/>             <!-- 手动配置数据库 -->
+                <xs:element ref="TestSet" minOccurs="1" maxOccurs="unbounded"/>     <!-- 测试集 -->
+            </xs:sequence>
+            <xs:attribute name="desc" type="xs:string" default=""/>                   <!-- 描述信息 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="InitDB">
+        <xs:complexType>
+            <!--
+            ===========
+            User模板
+            ===========
+            userId : String.format("test%05d", i)
+            password : "123456"
+            status : 0
+             -->
+            <xs:attribute name="user_count" type="xs:unsignedInt" default="10"/>        <!-- 用户总数 -->
+            <!--
+            ===========
+            SimPool模板
+            ===========
+            macAddress : String.format("%012d", i) => "xx:xx:xx:xx:xx:xx"
+            capacity : 256
+            softwareVersion : "V1.00"
+            hardwareVersion : "V1.00"
+            isEnabled : true
+            isOnLine : false
+            isInSimpool : false
+             -->
+            <xs:attribute name="simpool_count" type="xs:unsignedInt" default="3"/>      <!-- 卡池总数 -->
+            <!--
+            ===========
+            Simcard模板
+            ===========
+            iccid : String.format("89860%015d", i)
+            imsi : String.format("12345%010d", i)
+            isActivate : true
+            isInSimpool : false
+            isDisabled : false
+            isInUsed : false
+            isBroken : false
+            simcardImage : "testImage%d".getBytes()
+            imgMd5 : MD5(simcardImage)
+            bindUserId : null
+            -->
+            <xs:attribute name="simcard_count" type="xs:unsignedInt" default="10"/>     <!-- SIM卡总数 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="ConfigDB">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="SimPool" minOccurs="0" maxOccurs="unbounded"/>   <!-- 卡池 -->
+                <xs:element ref="SimCard" minOccurs="0" maxOccurs="unbounded"/>   <!-- SIM卡 -->
+                <xs:element ref="User" minOccurs="0" maxOccurs="unbounded"/>       <!-- 用户 -->
+            </xs:sequence>
+            <xs:attribute name="desc" type="xs:string" default=""/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="SimPool">
+        <xs:complexType>
+            <xs:attribute name="mac_addr" use="required">                           <!-- mac地址。格式为：xx:xx:xx:xx:xx:xx -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="[0-9a-fA-F][0-9a-fA-F](:[0-9a-fA-F][0-9a-fA-F]){5}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="new_mac_addr">                                        <!-- 新的mac地址。格式为：xx:xx:xx:xx:xx:xx -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="[0-9a-fA-F][0-9a-fA-F](:[0-9a-fA-F][0-9a-fA-F]){5}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="capacity">                                            <!-- 容量。0-65535 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:unsignedShort">
+                        <xs:maxInclusive value="65535"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="sw_ver">                            <!-- 软件版本号。"V1.00" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="V[0-9]\.[0-9][0-9]"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="hw_ver">                            <!-- 硬件版本号。"V1.00" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="V[0-9]\.[0-9][0-9]"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="isEnabled" type="xs:boolean"/>                        <!-- 已激活 -->
+            <xs:attribute name="isOnLine" type="xs:boolean"/>                         <!-- 在线 -->
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="SimCard">
+        <xs:complexType>
+            <xs:attribute name="imsi" use="required">            <!-- IMSI号。"353331234567890" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9]){15}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="new_imsi">                       <!-- 新的IMSI号。"353331234567890" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9]){15}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="iccid">                          <!-- ICCID号。"89860117851015686642" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9]){20}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="sim_img">                        <!-- 镜像。""或n字节的2*n长的十六进制串 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9a-fA-F][0-9a-fA-F])*"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="img_md5">                        <!-- 镜像的MD5值(16个字节，32长的十六进制串，不提供该值时，将根据sim_img自动计算，为""时则md5为空) -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="(([0-9a-fA-F]){32})?"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="isActivate" type="xs:boolean"/>                    <!-- 已激活。默认值为"true" -->
+            <xs:attribute name="isDisabled" type="xs:boolean"/>                    <!-- 已禁用。默认值为"false" -->
+            <xs:attribute name="isBroken" type="xs:boolean"/>                      <!-- 已坏。默认值为"false" -->
+            <xs:attribute name="isInSimpool" type="xs:boolean"/>                   <!-- 在位。默认值为"false" -->
+            <xs:attribute name="isInUsed" type="xs:boolean"/>                      <!-- 已分出。默认值为"false" -->
+            <xs:attribute name="bindUserId" type="xs:string"/>                     <!-- 绑定用户ID(不提供该值或为""时，表示未绑定用户) -->
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="User">
+        <xs:complexType>
+            <xs:attribute name="id" type="xs:string" use="required"/>              <!-- 用户ID -->
+            <xs:attribute name="new_id" type="xs:string"/>                          <!-- 新的用户ID -->
+            <xs:attribute name="password" type="xs:string"/>                        <!-- 密码 -->
+            <xs:attribute name="status">                                               <!-- 状态(0 正常 1 已禁用 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:int">
+                        <xs:enumeration value="0"/>                                    <!-- 正常 -->
+                        <xs:enumeration value="1"/>                                    <!-- 已禁用 -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TestSet">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="TestGroup" minOccurs="1" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="desc" type="xs:string" use="required"/>
+            <xs:attribute name="skip" type="xs:boolean" default="false"/>
+            <xs:attribute name="status" use="optional">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="未解决"/>
+                        <xs:enumeration value="设计如此"/>
+                        <xs:enumeration value="已解决"/>
+                        <xs:enumeration value="暂不修改"/>
+                        <xs:enumeration value="未实现"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TestGroup">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="PreAction" minOccurs="0"/>                            <!-- 前置动作 -->
+                <xs:element ref="TestCase" minOccurs="1" maxOccurs="unbounded"/>    <!-- 测试用例 -->
+            </xs:sequence>
+            <xs:attribute name="no" type="xs:string"/>                                 <!-- 测试组编号(应全局唯一) -->
+            <xs:attribute name="desc" type="xs:string" use="required"/>
+            <xs:attribute name="skip" type="xs:boolean" default="false"/>           <!-- 跳过本组测试 -->
+            <xs:attribute name="status" use="optional">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="未解决"/>
+                        <xs:enumeration value="设计如此"/>
+                        <xs:enumeration value="已解决"/>
+                        <xs:enumeration value="暂不修改"/>
+                        <xs:enumeration value="未实现"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="PreAction">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:group ref="actions"/>                                                <!-- 测试操作 -->
+            </xs:sequence>
+            <xs:attribute name="desc" type="xs:string" default=""/>
+        </xs:complexType>
+    </xs:element>
+
+    <!--
+     测试用例是测试计划的核心，整个测试计划是由一个个的测试用例组成的。
+     每个用例的测试环境仅由TestPlan.InitDB, TestPlan.InitClient以及该用例所在的TestGroup的PreAction确定。测试用例之间的环境没有上下文依赖。
+     -->
+    <xs:element name="TestCase">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:group ref="actions"/>                                               <!-- 测试操作 -->
+            </xs:sequence>
+            <xs:attribute name="no" type="xs:int" use="optional"/>              <!-- 用例编号(应全局唯一) -->
+            <xs:attribute name="level" use="required">                               <!-- 用例等级 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="S"/>              <!-- S级，致命bug，只要有1个fail，结果就是fail -->
+                        <xs:enumeration value="A"/>              <!-- A级，严重bug -->
+                        <xs:enumeration value="B"/>              <!-- B级，警告bug -->
+                        <xs:enumeration value="C"/>              <!-- C级，一般bug -->
+                        <xs:enumeration value="D"/>              <!-- D级，轻微bug -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+            <xs:attribute name="skip" type="xs:boolean" default="false"/>         <!-- 跳过本测试用例 -->
+            <xs:attribute name="status" use="required">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="未解决"/>
+                        <xs:enumeration value="设计如此"/>
+                        <xs:enumeration value="已解决"/>
+                        <xs:enumeration value="暂不修改"/>
+                        <xs:enumeration value="未实现"/>
+                        <xs:enumeration value="未测试"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute use="required" name="tester">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="liqingxia"/>
+                        <xs:enumeration value="yanghongyan"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute use="required" name="developer">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="yuanyuefeng"/>
+                        <xs:enumeration value="lifenglong"/>
+                        <xs:enumeration value="zhangxiaoli"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:group name="actions">
+        <xs:sequence>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="sleep"/>                <!-- 睡眠 -->
+
+                <xs:element ref="connsvr"/>              <!-- 连接服务器 -->
+                <xs:element ref="disconn"/>              <!-- 断开连接 -->
+                <xs:element ref="config"/>               <!-- 配置 -->
+                <xs:element ref="exec"/>                  <!-- 执行外部程序 或 内嵌groovy脚本 -->
+                <xs:element ref="assert_rsp"/>           <!-- 等待回复 -->
+                <xs:element ref="assert_req"/>           <!-- 等待请求 -->
+                <xs:element ref="assert_no_rsp"/>       <!-- 收不到回复 -->
+                <xs:element ref="assert_no_req"/>       <!-- 收不到请求 -->
+
+                <xs:element ref="mt_login"/>             <!-- 终端 登录 -->
+                <xs:element ref="mt_loginbyid"/>        <!-- 终端 用session Id登录 -->
+                <xs:element ref="mt_requim"/>            <!-- 终端 分卡 -->
+                <xs:element ref="mt_simimg"/>            <!-- 终端 SIM卡镜像 -->
+                <xs:element ref="mt_simpool"/>           <!-- 终端 APDU鉴权 -->
+                <xs:element ref="mt_revuim"/>            <!-- 终端 还卡 -->
+                <xs:element ref="mt_logout"/>            <!-- 终端 退录 -->
+                <xs:element ref="mt_alert"/>             <!-- 终端 报警 -->
+                <xs:element ref="mt_trace"/>             <!-- 终端 实时调试信息 -->
+                <xs:element ref="mt_heartbeat"/>        <!-- 终端 心跳包 -->
+                <xs:element ref="mt_loguploadret"/>        <!-- 终端 上传日志 -->
+
+
+                <xs:element ref="TermMtRevUim_Rsp"/>      <!-- 终端强制还卡主动回复 -->
+                <xs:element ref="TermMtLogout_Rsp"/>      <!-- 终端强制退录主动回复 -->
+                <xs:element ref="TermMtAssignUim_Rsp"/>   <!-- 终端主动分卡主动回复 -->
+                <xs:element ref="TermMtTrace_Rsp"/>        <!-- 终端打开关闭调试主动回复 -->
+                <xs:element ref="TermMtLogupload_Rsp"/>   <!-- 终端上传日志主动回复 -->
+
+                <xs:element ref="TermSPLogupload_Rsp"/>   <!-- SP上传日志主动回复 -->
+
+                <xs:element ref="sp_login"/>             <!-- 卡池 登录 -->
+                <xs:element ref="sp_siminfo"/>           <!-- 卡池 上报Sim卡信息 -->
+                <xs:element ref="sp_siminfo_update"/>   <!-- 卡池 更新Sim卡信息 -->
+                <xs:element ref="sp_heartbeat"/>         <!-- 卡池 心跳包 -->
+                <xs:element ref="sp_loguploadres"/>         <!-- 卡池 心跳包 -->
+
+            </xs:choice>
+        </xs:sequence>
+    </xs:group>
+
+    <!-- ================================================================================================== -->
+    <xs:element name="sleep">
+        <xs:complexType>
+            <!-- 描述 -->
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="time" type="xs:positiveInteger"/>          <!-- sleep的秒数 -->
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="connsvr">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="disconn">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="config">
+        <xs:complexType>
+            <!-- 参数 -->
+            <xs:sequence>
+                <xs:element ref="field" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="exec">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="cmd">                                        <!-- 要执行的命令。可用">" + 外部程序路径加参数，或"$" + groovy脚本 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="[$|>].+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_retcode" type="xs:string" default="ERR_OK"/>        <!-- 期望返回值。不相符时，将打印(实际retcode、stdout和stderr的内容) -->
+            <xs:attribute name="wait_ms" type="xs:int" default="0"/>   <!--执行等待毫秒时长-->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="assert_rsp">
+        <xs:complexType>
+            <!-- 期望结果 -->
+            <xs:sequence>
+                <xs:element ref="assert_expr" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="timeout" type="xs:positiveInteger" default="5"/>      <!-- 超时秒数，超时该时长仍未收到该rsp则失败 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="assert_req">
+        <xs:complexType>
+            <!-- 期望结果 -->
+            <xs:sequence>
+                <xs:element ref="assert_expr" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+            <xs:attribute name="cmd_id" use="required">                     <!-- 命令ID -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <!-- Server => SimPool -->
+                        <xs:enumeration value="CMD_SP_SIM_IMG"/>            <!-- SIM镜像 -->
+                        <xs:enumeration value="CMD_SP_SIM_APDU"/>           <!-- APDU命令透传 -->
+                        <xs:enumeration value="CMD_SP_LOG_UPLOAD"/>         <!-- 获取SP日志 -->
+
+                        <!-- Server => MT -->
+                        <xs:enumeration value="SIMPOOL"/>                   <!-- SIMPOOL鉴权回复 -->
+
+                        <xs:enumeration value="TERMINFO"/>                   <!-- 获取终端信息 -->
+                        <xs:enumeration value="TERMREVUIM"/>                 <!-- 强制还卡 -->
+                        <xs:enumeration value="TERMLOGOUT"/>                 <!-- 强制退录 -->
+                        <xs:enumeration value="TERMASSIGNUIM"/>              <!-- 主动分卡 -->
+                        <xs:enumeration value="TERMTRACE"/>                   <!-- TRACE开关 -->
+                        <xs:enumeration value="TERMLOGUPLOAD"/>              <!-- 提取日志 -->
+                        <xs:enumeration value="TERMUPGRADE"/>                 <!-- 软件升级 -->
+                        <xs:enumeration value="TERMLOGUPLOAD"/>              <!-- 获取终端日志 -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="seq_no" type="xs:unsignedShort"/>          <!-- 序列号，如不提供则不校验 -->
+            <xs:attribute name="timeout" type="xs:int" default="5"/>       <!-- 超时秒数，超时该时长仍未收到该req则失败 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="assert_no_rsp">
+        <xs:complexType>
+            <!-- 期望结果 -->
+            <xs:attribute name="timeout" type="xs:int" default="5"/>      <!-- 超时秒数，超时该时长仍未收到该rsp则成功 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="assert_no_req">
+        <xs:complexType>
+            <!-- 期望结果 -->
+            <xs:attribute name="cmd_id" use="required">                     <!-- 命令ID -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <!-- Server => SimPool -->
+                        <xs:enumeration value="CMD_SP_SIM_IMG"/>            <!-- SIM镜像 -->
+                        <xs:enumeration value="CMD_SP_SIM_APDU"/>           <!-- APDU命令透传 -->
+
+                        <!-- Server => MT -->
+                        <xs:enumeration value="SIMPOOL"/>                   <!-- SIMPOOL鉴权回复 -->
+
+                        <xs:enumeration value="TERMINFO"/>                   <!-- 获取终端信息 -->
+                        <xs:enumeration value="TERMREVUIM"/>                 <!-- 强制还卡 -->
+                        <xs:enumeration value="TERMLOGOUT"/>                 <!-- 强制退录 -->
+                        <xs:enumeration value="TERMASSIGNUIM"/>              <!-- 主动分卡 -->
+                        <xs:enumeration value="TERMTRACE"/>                   <!-- TRACE开关 -->
+                        <xs:enumeration value="TERMLOGUPLOAD"/>              <!-- 提取日志 -->
+                        <xs:enumeration value="TERMUPGRADE"/>                 <!-- 软件升级 -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="seq_no" type="xs:unsignedShort"/>          <!-- 序列号，如不提供则不校验 -->
+            <xs:attribute name="timeout" type="xs:int" default="5"/>       <!-- 超时秒数，超时该时长仍未收到该req则成功 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+    <!-- ================================================================================================== -->
+
+    <xs:element name="mt_login">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="user_id" type="xs:string" use="required"/>      <!-- 用户名 -->
+            <xs:attribute name="password" type="xs:string" use="required"/>     <!-- 密码 -->
+            <xs:attribute name="dev_id" type="xs:string" use="required"/>       <!-- 设备ID -->
+            <xs:attribute name="proto_ver" type="xs:int" default="2"/>          <!-- 协议版本，如不提供则使用<缺省值> -->
+            <xs:attribute name="codes_ver" type="xs:string" default="1.1"/>     <!-- 错误码版本，如不提供则使用<缺省值> -->
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>  <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_loginbyid">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="sessionid">                     <!-- 会话ID，如不提供则使用<正确>的值 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9a-fA-F]){12}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>   <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_requim">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="cells" use="required">                         <!-- 搜到的小区信息。格式：<plmn>,<rat>;<plmn2>,<rat2>;....，例："46001,3;46002,4" -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="[0-9]+,[0-9](;[0-9]+,[0-9])+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="imsi">                                            <!-- 已分到的卡的imsi号。换卡时使用。如不提供，则使用<正确>的值。imsi号不足15位时，将前面加0补足15位 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9]){15}|.*"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>     <!-- 结果码 -->
+            <xs:attribute name="expect_imsi">                                            <!-- 分到的卡的IMSI号 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9]){1,15}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="expect_img_md5">                                         <!-- 分到的卡的镜像MD5值 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|(([0-9a-fA-F]){32})"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_simimg">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>            <!-- 结果码 -->
+            <xs:attribute name="expect_img_data">                        <!-- Sim卡镜像 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9a-fA-F][0-9a-fA-F])+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_simpool">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="apdu_hexstr" use="required">             <!-- apdu请求包，为字节数组的16进制字符串表示 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9a-fA-F][0-9a-fA-F])+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>            <!-- 结果码 -->
+            <xs:attribute name="expect_response">                        <!-- apdu回复包，为字节数组的16进制字符串表示 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9a-fA-F][0-9a-fA-F])+(,[^,]+,[0-9]+)?"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_revuim">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="cause" type="xs:string" default="ERR_OK"/>               <!-- 还卡原因码 Not used yet -->
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_logout">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="cause" type="xs:string" default="ERR_OK"/>               <!-- 退录原因码 Not used yet -->
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_alert">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="cause" type="xs:string"/>                                   <!-- 告警原因码 -->
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_trace">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="line" type="xs:string" use="required"/>                                     <!-- 调试信息 -->
+
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_heartbeat">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="mt_loguploadret">
+    <xs:complexType>
+        <!-- ID与描述 -->
+        <xs:attribute name="id">
+            <xs:simpleType>
+                <xs:restriction base="xs:string">
+                    <xs:pattern value="MT.+"/>
+                </xs:restriction>
+            </xs:simpleType>
+        </xs:attribute>
+        <xs:attribute name="desc" type="xs:string"/>
+        <!-- 参数 -->
+        <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+        <xs:attribute name="logpath" type="xs:string" use="required"/>      <!-- 路径 -->
+        <xs:attribute name="result" type="xs:int" default="0" />     <!-- Codes -->
+        <!-- 期望结果 -->
+        <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>  <!-- 结果码 -->
+    </xs:complexType>
+</xs:element>
+
+    <!-- ================================================================================================== -->
+
+    <xs:element name="TermMtAssignUim_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TermMtRevUim_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TermMtLogout_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TermMtTrace_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TermMtLogupload_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="MT.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="ERR_OK"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="TermSPLogupload_Rsp">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+
+            <!-- 返回结果 -->
+            <xs:attribute name="ret_code" type="xs:string" default="0"/>          <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <!-- ================================================================================================== -->
+
+    <xs:element name="sp_login">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="mac_hexstr" use="required">                            <!-- 网卡地址。必须提供。如果使用数据库中不存在的mac_hexstr，则需提供完整信息！！！ -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="[0-9a-fA-F][0-9a-fA-F](:[0-9a-fA-F][0-9a-fA-F]){5}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="max_sim_count" type="xs:unsignedShort"/>                <!-- 卡池容量 -->
+            <xs:attribute name="hw_ver" default="1.00">                                    <!-- 硬件版本 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="(.){4}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="sw_ver" default="1.00">                                    <!-- 软件版本 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="(.){4}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="0"/>                   <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="sp_siminfo">
+        <xs:complexType>
+            <!-- 参数 -->
+            <xs:sequence>
+                <xs:element ref="sim_info" minOccurs="0" maxOccurs="unbounded"/>         <!-- SIM卡信息 -->
+            </xs:sequence>
+            <xs:attribute name="sim_count" type="xs:unsignedShort"/>                     <!-- SIM卡总数 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="0"/>              <!-- 结果码 -->
+            <xs:attribute name="expect_invalidSimNos">                                  <!-- 非法Sim卡编号 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="\[[0-9]+(, [0-9]+)*\]"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="sp_siminfo_update">
+        <xs:complexType>
+            <!-- 参数 -->
+            <xs:sequence>
+                <xs:element ref="sim_info" minOccurs="1" maxOccurs="unbounded"/>         <!-- SIM卡信息 -->
+            </xs:sequence>
+            <xs:attribute name="sim_count" type="xs:unsignedShort"/>                     <!-- SIM卡总数 -->
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="0"/>               <!-- 结果码 -->
+            <xs:attribute name="expect_invalidSimNos">                                   <!-- 非法Sim卡编号 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="\[[0-9]+(, [0-9]+)*\]"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="sp_heartbeat">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+
+            <!-- 期望结果 -->
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="sp_loguploadres">
+        <xs:complexType>
+            <!-- ID与描述 -->
+            <xs:attribute name="id">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="SP.+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="waitRsp" type="xs:boolean" default="true"/>
+            <xs:attribute name="result" type="xs:int" default="0"/>               <!--结果码-->
+            <xs:attribute name="logpath" type="xs:string" />              <!--路径-->
+            <!-- 期望结果 -->
+            <xs:attribute name="expect_ret" type="xs:string" default="ERR_OK"/>              <!-- 结果码 -->
+        </xs:complexType>
+    </xs:element>
+
+    <!-- ================================================================================================== -->
+    <xs:element name="sim_info">
+        <xs:complexType>
+            <xs:attribute name="pos" type="xs:unsignedShort" use="required"/>      <!-- 在SIM卡中的位置 -->
+            <xs:attribute name="imsi" use="required">             <!-- IMSI号。如果使用数据库中不存在的imsi号，则需提供完整信息！！！ -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="$.+|([0-9]){1,15}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="iccid">                             <!-- ICCID号 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9]){20}"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="sim_img">                           <!-- 镜像 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="([0-9a-fA-F][0-9a-fA-F])+"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="img_md5">                          <!-- 镜像的MD5值(不提供该值时，将根据sim_img自动计算，为""时则md5为空) -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:pattern value="(([0-9a-fA-F]){32})?"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="status" default="Normal">                            <!-- SIM卡状态 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="Normal"/>                                <!-- 正常 -->
+                        <xs:enumeration value="NotInSp"/>                               <!-- 不在位 -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="assert_expr">
+        <xs:complexType>
+            <!-- 描述 -->
+            <xs:attribute name="desc" type="xs:string"/>
+            <!-- 参数 -->
+            <xs:attribute name="expr" type="xs:string"/>                            <!-- 脚本表达式，获取的值统一格式化为string -->
+            <xs:attribute name="expect" type="xs:string"/>                          <!-- 期望值 -->
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="field">
+        <xs:complexType>
+            <!-- 参数 -->
+            <xs:attribute name="name" use="required">                             <!-- 字段名称 -->
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:enumeration value="bAutoReq"/>                         <!-- 是否自动请求 -->
+                        <xs:enumeration value="bAutoRsp"/>                         <!-- 是否自动回复 -->
+                        <xs:enumeration value="bWaitRsp"/>                        <!-- 是否等待回复 -->
+                        <xs:enumeration value="bAutoHeartBeat"/>                  <!-- 是否定时心跳 -->
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="value" type="xs:boolean" use="required"/>                            <!-- 字段值 -->
+            <xs:attribute name="desc" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>

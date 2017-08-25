@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://code.alibabatech.com/schema/dubbo
+    http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+
+    <dubbo:application name="ass_auto_test_consumer"/>
+    <dubbo:registry timeout="3000" protocol="zookeeper" address="192.168.8.133:2181"/>
+    <dubbo:reference id="autoTestIgniteService" timeout="60000"  interface="com.cootf.cloudsim.oms.service.api.service.AutoTestIgniteService"/>
+    <dubbo:reference id="autoTestMongoDBService"  timeout="60000" interface="com.cootf.cloudsim.oms.service.api.service.AutoTestMongoDBService"/>
+    <dubbo:reference id="simCardService"  timeout="60000" interface="com.cootf.cloudsim.oms.service.api.service.SimCardService"/>
+    <dubbo:reference id="simPoolService"  timeout="60000" interface="com.cootf.cloudsim.oms.service.api.service.SimPoolService"/>
+</beans>

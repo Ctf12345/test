@@ -1,0 +1,11 @@
+2017-08-17 10:57:10,123 [DEBUG] preAction [............[TestCase#1 desc=正常登陆]] desc:初始化
+2017-08-17 10:57:11,631 [FATAL] MockSp init Failed
+2017-08-17 10:57:11,677 [DEBUG] deInitTestEnv
+2017-08-17 10:58:30,712 [DEBUG] configDB [............[TestCase#1 desc=正常登陆]] desc:
+2017-08-17 10:58:30,764 [DEBUG] preAction [............[TestCase#1 desc=正常登陆]] desc:初始化
+2017-08-17 10:58:32,250 [FATAL] MockSp init Failed
+2017-08-17 10:58:32,286 [DEBUG] deInitTestEnv
+2017-08-17 10:59:12,582 [DEBUG] configDB [............[TestCase#1 desc=正常登陆]] desc:
+2017-08-17 10:59:12,635 [DEBUG] preAction [............[TestCase#1 desc=正常登陆]] desc:初始化
+2017-08-17 10:59:14,126 [FATAL] MockSp init Failed
+2017-08-17 10:59:14,161 [DEBUG] deInitTestEnv
