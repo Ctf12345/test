@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configureation statu="OFF">
+    <properties>
+        <property name="logdir">logs</property>
+    </properties>
+    <appenders>
+        <!-- 输出到控制台 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <!-- <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/> -->
+            <PatternLayout
+                    pattern="%d{HH:mm:ss.SSS} [%t]  %-5level %logger{36} - %msg%n"/>
+        </Console>
+        <!-- 按天备份日志 -->
+        <!-- fileName是初始生成的日志文件名，filePattern为时间到达后生成的新日志文件名 -->
+        <RollingFile name="File" fileName="${logdir}/logs_default.log" filePattern="${logdir}/logs_%d{yyyy-MM-dd}_%i.log" >
+            <!-- 输出格式 -->
+            <PatternLayout pattern="%d [%-5p] %m%n" />
+            <Policies>
+                <!-- 按日期分割 -->
+                <TimeBasedTriggeringPolicy modulate="true" interval="1"/>
+                <!-- 按大小分割 -->
+                <SizeBasedTriggeringPolicy size="128 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy>
+                <!-- 按条件定时清理日志 -->
+                <Delete basePath="${logdir}" maxDepth="1">
+                    <IfFileName glob="logs_*.log" />
+                    <IfLastModified age="30d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+        <!-- ERROR & FATAL 级别日志邮件通知 -->
+        <!-- bufferSize: the number of logging events delivered in this e-mail -->
+     <!--   <SMTP name="Mail"
+              subject="AssServer Error"
+              from="yuanyuefeng@cootf.com"
+              to="yuanyuefeng@cootf.com"
+              cc="zhangxiaoli@cootf.com"
+              smtpHost="smtp.mxhichina.com"
+              smtpPort="25"
+              smtpUsername="yuanyuefeng@cootf.com"
+              smtpPassword="yyfctf!@#456"
+              bufferSize="50">
+        </SMTP>-->
+    </appenders>
+    <loggers>
+        <logger name="com.alibaba.dubbo" level="INFO"></logger>
+        <!--屏蔽RocketMQ 太多无用的info级别日志 -->
+        <logger name="RocketmqClient" level="WARN"/>
+        <logger name="org.apache.zookeeper" level="INFO"/>
+        <logger name="org.springframework" level="INFO"/>
+        <root level="trace">
+            <appender-ref ref="Console"/>
+            <appender-ref ref="File"/>
+            <appender-ref ref="Mail" />
+        </root>
+    </loggers>
+</configureation>
